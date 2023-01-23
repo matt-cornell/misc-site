@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Game</title>
+    <style>
+      html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden;
+      }
+      #canvas {
+        position: absolute;
+        left: 0;
+        right: 0;
+        top: 0;
+        bottom: 0;
+        overflow: hidden;
+      }
+      #paused {
+        padding: 0;
+        font-family: sans-serif;
+        color: white;
+        display: none;
+        z-index: 10;
+        position: fixed;
+        left: 0;
+        width: 100%;
+        top: 30%;
+        text-align: center;
+      }
+    </style>
+  </head>
+  <body>
+    <canvas id="canvas"></canvas>
+    <p id="paused">PAUSED</p>
+    <script>
+      const canvas = document.getElementById("canvas");
+      const ctx = canvas.getContext("2d");
+      var x = 512;
+      var y = 512;
+      canvas.width = x;
+      canvas.height = y;
+      ctx.fillStyle = "#000000";
+      ctx.fillRect(0, 0, x - 1, y - 1);
+      ctx.fill();
+      var paddleWidth = 100;
+      const paddleHeight = 10;
+      var paddleY = y - paddleHeight * 1.5;
+      const ballR = 10;
+      const paddleSpeed = 3.75;
+      const updateInterval = 5;
+      var paddleX, ballY, ballX, balldX, balldY;
+      var lArrow = false, rArrow = false;
+      var score = 0, highscore = 0;
+      ctx.font = Math.floor(x / 10) + "px sans-serif";
+      resize();
+      function resize() {
+        let xs = window.innerWidth / x;
+        let ys = window.innerHeight / y;
+        x = window.innerWidth;
+        y = window.innerHeight;
+        canvas.width = x;
+        canvas.height = y;
+        paddleWidth *= xs;
+        paddleY = y - paddleHeight * 1.5;
+        paddleX *= xs;
+        ballX *= xs;
+        ballY *= ys;
+        balldX *= xs;
+        balldY *= ys;
+        document.getElementById("paused").style.fontSize = Math.floor(x / 10) + "px";
+      }
+      window.onresize = resize;
+      document.onkeydown = (e) => {
+        e = e || window.event;
+        if (e.keyCode == "37") lArrow = true;
+        else if (e.keyCode == "39") rArrow = true;
+      };
+      document.onkeyup = (e) => {
+        e = e || window.event;
+        if (e.keyCode == "37") lArrow = false;
+        else if (e.keyCode == "39") rArrow = false;
+        else if (e.keyCode == "80") pause();
+      };
+      function init() {
+        paddleX = (x - paddleWidth) / 2;
+        ballY = y - paddleHeight * 1.5 - ballR - 10;
+        ballX = x / 2;
+        balldX = Math.random() - 0.5;
+        balldY = -5;
+        if (score > highscore) {
+          highscore = score;
+        }
+        score = 0;
+      }
+      init();
+      var paused = false;
+      function pause() {
+        if (paused) {
+          paused = false;
+          document.getElementById("paused").style.display = "none";
+          recursiveUpdate(updateInterval);
+        }
+        else {
+          document.getElementById("paused").style.display = "block";
+          paused = true;
+        }
+      }
+      pause();
+      function update() {
+        ctx.fillStyle = "#000000";
+        ctx.fillRect(0, 0, x, y);
+        ctx.fill();
+        ctx.beginPath();
+        ctx.fillStyle = "#FFFFFF";
+        ctx.fillRect(paddleX, paddleY, paddleWidth, paddleHeight);
+        ctx.arc(ballX, ballY, ballR, 0, 2 * Math.PI);
+        ctx.fill();
+        let ms = ctx.measureText(score);
+        ctx.font = Math.floor(x / 10) + "px sans-serif";
+        ctx.fillText(score, (x - ms.width) / 2, y / 4);
+        ctx.font = Math.floor(x / 50) + "px sans-serif";
+        ms = ctx.measureText("High Score: " + highscore);
+        ctx.fillText("High Score: " + highscore, x - ms.width - 10, 10 + x / 50);
+        ballX += balldX;
+        ballY += balldY;
+        if (ballX > x - ballR || ballX < ballR) balldX = -balldX;
+        if (ballY < ballR) balldY = -balldY;
+        else if (ballY > y - ballR - paddleHeight * 1.5 && balldY > 0) {
+          if (Math.abs(ballX - paddleX - paddleWidth / 2) < paddleWidth / 2) {
+            balldY = -balldY;
+            const offset = ballX - paddleX - paddleWidth / 2;
+            balldX += offset / x * 20;
+            ++score;
+          }
+          else init();
+        }
+        if (lArrow) {if (!rArrow && paddleX > 0) paddleX -= paddleSpeed;}
+        else if (rArrow && paddleX <= x - paddleWidth) paddleX += paddleSpeed;
+      }
+      function recursiveUpdate(timeout) {
+        update();
+        if (!paused) setTimeout(recursiveUpdate, timeout, timeout);
+      }
+      recursiveUpdate(updateInterval);
+    </script>
+  </body>
+</html>
