@@ -1,155 +1,311 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <title>Game</title>
+    <title>Pong</title>
     <style>
       html, body {
+        overflow: hidden;
         margin: 0 !important;
         padding: 0 !important;
-        overflow: hidden;
       }
       #canvas {
         position: absolute;
         left: 0;
-        right: 0;
         top: 0;
-        bottom: 0;
-        overflow: hidden;
+        border: 0px solid #000;
       }
-      #paused {
-        padding: 0;
-        font-family: sans-serif;
-        color: white;
+      #menu {
         display: none;
-        z-index: 10;
-        position: fixed;
-        left: 0;
-        width: 100%;
-        top: 30%;
-        text-align: center;
-      }
-      a {
         position: absolute;
-        left: 0;
-        top: 0;
-        z-index: 20;
+        width: 60%;
+        height: 60%;
+        top: 20%;
+        left: 20%;
+        background-color: #222;
+        color: #CCC;
+        font-size: 30px;
+      }
+      #menu ul {
+        position: absolute;
+        left: 10px;
+        list-style-type: none;
+        margin: 10px;
+        padding: 0;
+      }
+      li {
+        margin: 20px 0;
+        left: 5%;
+      }
+      .numeric-input {
+        position: absolute;
+        font-size: 30px;
+        left: 280px;
+        background: transparent;
+        border: none;
+        color: #CCC;
+      }
+      #done {
+        font-size: 40px;
+        position: absolute;
+        background-color: #505050;
+        border: none;
+        color: #CCC;
+        padding: 15px 32px;
+        text-align: center;
+        text-decoration: none;
+        display: inline-block;
+        font-size: 16px;
+        transition-duration: 0.1s;
+        margin: 10 auto;
+        width: 90%;
+        left: 5%;
+        bottom: 5%;
+        height: 20%;
+      }
+      #done:hover {
+        background-color: #404040;
       }
     </style>
   </head>
-  <body>
-    <a href="https://matt-cornell.github.io/misc-site">Back</a>
+  <body width=100% height=100%>
     <canvas id="canvas"></canvas>
-    <p id="paused">PAUSED</p>
+    <div id="menu">
+      <ul>
+      <li>
+      <label for="ball-speed">Ball speed:</label>
+      <input type="number" class="numeric-input" id="ball-speed" name="ball-speed" step="0.001">
+      </li>
+      <li>
+      <label for="paddle-speed">Paddle speed:</label>
+      <input type="number" class="numeric-input" id="paddle-speed" name="paddle-speed" step="0.001">
+      </li>
+      <li>
+      <label for="paddle-angle">Paddle angle:</label>
+      <input type="number" class="numeric-input" id="paddle-angle" name="paddle-angle" step="0.001">
+      </li>
+      <li>
+      <label for="difficulty">AI difficulty:</label>
+      <input type="number" class="numeric-input" id="difficulty" name="difficulty" step="0.001">
+      </li>
+      <li>
+      <label for="frame-delay">Frame delay:</label>
+      <input type="number" class="numeric-input" id="frame-delay" name="frame-delay" step="0.001">
+      </li>
+      </ul>
+      <button id="done" onclick="resume();">Done</button>
+    </div>
     <script>
-      const canvas = document.getElementById("canvas");
-      const ctx = canvas.getContext("2d");
-      var x = 512;
-      var y = 512;
-      canvas.width = x;
-      canvas.height = y;
-      ctx.fillStyle = "#000000";
-      ctx.fillRect(0, 0, x - 1, y - 1);
-      ctx.fill();
-      var paddleWidth = 100;
-      const paddleHeight = 10;
-      var paddleY = y - paddleHeight * 1.5;
-      const ballR = 10;
-      const paddleSpeed = 3.75;
-      const updateInterval = 5;
-      var paddleX, ballY, ballX, balldX, balldY;
-      var lArrow = false, rArrow = false;
-      var score = 0, highscore = 0;
-      ctx.font = Math.floor(x / 10) + "px sans-serif";
-      resize();
-      function resize() {
-        let xs = window.innerWidth / x;
-        let ys = window.innerHeight / y;
-        x = window.innerWidth;
-        y = window.innerHeight;
-        canvas.width = x;
-        canvas.height = y;
-        paddleWidth *= xs;
-        paddleY = y - paddleHeight * 1.5;
-        paddleX *= xs;
-        ballX *= xs;
-        ballY *= ys;
-        balldX *= xs;
-        balldY *= ys;
-        document.getElementById("paused").style.fontSize = Math.floor(x / 10) + "px";
-      }
-      window.onresize = resize;
-      document.onkeydown = (e) => {
-        e = e || window.event;
-        if (e.keyCode == "37") lArrow = true;
-        else if (e.keyCode == "39") rArrow = true;
-      };
-      document.onkeyup = (e) => {
-        e = e || window.event;
-        if (e.keyCode == "37") lArrow = false;
-        else if (e.keyCode == "39") rArrow = false;
-        else if (e.keyCode == "80") pause();
-      };
-      function init() {
-        paddleX = (x - paddleWidth) / 2;
-        ballY = y - paddleHeight * 1.5 - ballR - 10;
-        ballX = x / 2;
-        balldX = Math.random() - 0.5;
-        balldY = -5;
-        if (score > highscore) {
-          highscore = score;
-        }
-        score = 0;
-      }
-      init();
+      var width = window.innerWidth;
+      var height = window.innerHeight;
+      const paddleSize = 1/8;
+      const paddleWidth = 10;
+      const ballRadius = 10;
+      var canvas = document.getElementById("canvas");
+      canvas.width = width;
+      canvas.height = height;
+      var context = canvas.getContext("2d");
+      context.fillStyle = "#000000";
+      context.fillRect(0, 0, width, height);
+      context.font = "48px Courier New";
+      context.strokeStyle = "#FFFFFF";
+      context.setLineDash([10, 5]);
+      var AIY = 0.5;
+      var playerY = 0.5;
+      var ballX = 1/2;
+      var ballY = 1/3;
+      var balldX = 0;
+      var balldY = 0;
+      var AIScore = 0;
+      var playerScore = 0;
+      var speed = 0.015;
+      var difficulty = 2/3;
+      var ballSpeed = 0.02;
+      var ballAngle = Math.atan(-1) + Math.PI;
+      var paddleAngle = 0.5 * Math.PI / 180;
+      var keysPressed = new Set();
+      var ticking = true;
       var paused = false;
-      function pause() {
-        if (paused) {
-          paused = false;
-          document.getElementById("paused").style.display = "none";
-          recursiveUpdate(updateInterval);
-        }
-        else {
-          document.getElementById("paused").style.display = "block";
-          paused = true;
-        }
+      var pauseable = true
+      var framedelay = 50;
+      function setBall() {
+        balldX = ballSpeed * Math.cos(ballAngle);
+        balldY = ballSpeed * Math.sin(ballAngle);
       }
-      pause();
-      function update() {
-        ctx.fillStyle = "#000000";
-        ctx.fillRect(0, 0, x, y);
-        ctx.fill();
-        ctx.beginPath();
-        ctx.fillStyle = "#FFFFFF";
-        ctx.fillRect(paddleX, paddleY, paddleWidth, paddleHeight);
-        ctx.arc(ballX, ballY, ballR, 0, 2 * Math.PI);
-        ctx.fill();
-        let ms = ctx.measureText(score);
-        ctx.font = Math.floor(x / 10) + "px sans-serif";
-        ctx.fillText(score, (x - ms.width) / 2, y / 4);
-        ctx.font = Math.floor(x / 50) + "px sans-serif";
-        ms = ctx.measureText("High Score: " + highscore);
-        ctx.fillText("High Score: " + highscore, x - ms.width - 10, 10 + x / 50);
+      function loop(value) {
+        while (value > Math.PI) value -= 2 * Math.PI;
+        while (value <= -Math.PI) value += 2 * Math.PI;
+        return value;
+      }
+      reflectAI = (angle) => loop(2 * angle - ballAngle);
+      reflectPlayer = (angle) => loop(2 * angle - ballAngle + Math.PI);
+      map = (x, il, iu, ol, ou) => (x - il) * ((ou - ol) / (iu - il)) + ol;
+      setBall();
+      document.onkeydown = function(evt) {
+        if (!ticking) return;
+        evt = (evt || window.event);
+        const key = evt.key;
+        keysPressed.add(key);
+        if (pauseable && key == "p") {
+          paused = !paused;
+          if (!paused) recursiveTick();
+        }
+        if (key == "e") toMenu();
+        if (key == "r") reset();
+      }
+      document.onkeyup = function(evt) {
+        const key = (evt || window.event).key;
+        keysPressed.delete(key);
+        pauseable = true;
+      }
+      window.onresize = function(evt) {
+        width = window.innerWidth;
+        height = window.innerHeight;
+        canvas.width = width;
+        canvas.height = height;
+        context.font = "48px Courier New";
+        context.strokeStyle = "#FFFFFF";
+        context.setLineDash([10, 5]);
+        context.fillStyle = "#000000";
+        context.fillRect(0, 0, width, height);
+        context.fillStyle = "#FFFFFF";
+        context.fillRect(0, (AIY - paddleSize / 2) * height, paddleWidth, paddleSize * height);
+        context.fillRect(width * 1 - paddleWidth, (playerY - paddleSize / 2) * height, paddleWidth, paddleSize * height);
+        context.beginPath();
+        context.arc(ballX * width, ballY * height, ballRadius, 0, 2 * Math.PI);
+        context.fill();
+        context.fillText(AIScore, width / 3, height / 4);
+        context.fillText(playerScore, 2 * width / 3, height / 4);
+        context.beginPath();
+        context.moveTo(width / 2 , 0);
+        context.lineTo(width / 2, height);
+        context.stroke();
+      }
+      document.getElementById("ball-speed").addEventListener("input", (e)=>ballSpeed=new Number(e.target.value));
+      document.getElementById("paddle-speed").addEventListener("input", (e)=>speed=new Number(e.target.value));
+      document.getElementById("paddle-angle").addEventListener("input", (e)=>paddleAngle=new Number(e.target.value));
+      document.getElementById("difficulty").addEventListener("input", (e)=>difficulty=new Number(e.target.value));
+      document.getElementById("frame-delay").addEventListener("input", (e)=>framedelay=new Number(e.target.value));
+      document.getElementById("ball-speed").value = Math.round(ballSpeed * 1000) / 1000;
+      document.getElementById("paddle-speed").value = Math.round(speed * 1000) / 1000;
+      document.getElementById("paddle-angle").value = Math.round(paddleAngle * 1000) / 1000;
+      document.getElementById("difficulty").value = Math.round(difficulty * 1000) / 1000;
+      document.getElementById("frame-delay").value = Math.round(framedelay * 1000) / 1000;
+      function toMenu() {
+        ticking = false;
+        document.getElementById("menu").style.display = "block";
+      }
+      function resume() {
+        document.getElementById("menu").style.display = "none";
+        ticking = true;
+        recursiveTick();
+      }
+      function reset() {
+        AIY = 0.5;
+        playerY = 0.5;
+        ballX = 1/2;
+        ballY = 1/3;
+        AIScore = 0;
+        playerScore = 0;
+        ballAngle = Math.atan(-1) + Math.PI;
+        setBall();
+      }
+      function pitch(x, y, t) {
+        ballX = x;
+        ballY = y;
+        ballAngle = t * Math.PI / 180;
+        setBall();
+      }
+      function tick() {
         ballX += balldX;
         ballY += balldY;
-        if (ballX > x - ballR || ballX < ballR) balldX = -balldX;
-        if (ballY < ballR) balldY = -balldY;
-        else if (ballY > y - ballR - paddleHeight * 1.5 && balldY > 0) {
-          if (Math.abs(ballX - paddleX - paddleWidth / 2) < paddleWidth / 2) {
-            balldY = -balldY;
-            const offset = ballX - paddleX - paddleWidth / 2;
-            balldX += offset / x * 20;
-            ++score;
-          }
-          else init();
+        if (ballX < width * difficulty) {
+          if (ballY < AIY - paddleSize / 3) AIY -= speed;
+          if (ballY > AIY + paddleSize / 3) AIY += speed;
         }
-        if (lArrow) {if (!rArrow && paddleX > 0) paddleX -= paddleSpeed;}
-        else if (rArrow && paddleX <= x - paddleWidth) paddleX += paddleSpeed;
+        if (playerY >= paddleSize / 2 && (keysPressed.has('w') || keysPressed.has("ArrowUp"))) playerY -= speed;
+        if (playerY <= 1 - paddleSize / 2 && (keysPressed.has('s') || keysPressed.has("ArrowDown"))) playerY += speed;
+        if (ballY <= 0) {
+          console.log("Top bounce");
+          balldY =- balldY;
+          ballY = 0;
+          ballAngle = Math.atan(balldY / balldX);
+        }
+        if (ballY >= 1) {
+          console.log("Bottom bounce");
+          balldY =- balldY;
+          ballY = 1;
+          ballAngle = Math.atan(balldY / balldX);
+        }
+        if (ballX <= paddleWidth / width) {
+          if (Math.abs(ballY - AIY) <= paddleSize / 2) {
+            ballX = paddleWidth / width;
+            const input = ballAngle;
+            const paddle = loop(map(ballY - AIY, AIY - paddleSize / 2, AIY + paddleSize / 2, paddleAngle, -paddleAngle));
+            ballAngle = loop(reflectAI(paddle));
+            console.log("AI bounce: entering @", input * 180 / Math.PI, "reflecting @", paddle * 180 / Math.PI, "exiting @", ballAngle * 180 / Math.PI);
+            setBall();
+            if (balldX < 0) {
+              balldX = -balldX;
+              balldY = -balldY;
+              ballAngle += Math.PI;
+            }
+          }
+          else {
+            ++playerScore;
+            AIY = 0.5;
+            playerY = 0.5;
+            ballX = 0.5;
+            ballY = 1/3;
+            ballAngle = Math.atan(-1) + Math.PI;
+            setBall();
+            console.log("Player score: ", playerScore);
+          }
+        }
+        if (ballX >= 1 - paddleWidth / width) {
+          if (Math.abs(ballY - playerY) <= paddleSize / 2) {
+            ballX = 1 - paddleWidth / width;
+            const input = ballAngle;
+            const paddle = loop(map(ballY - playerY, playerY - paddleSize / 2, playerY + paddleSize / 2, Math.PI + paddleAngle, Math.PI - paddleAngle));
+            ballAngle = loop(reflectPlayer(paddle));
+            console.log("Player bounce: entering @", input * 180 / Math.PI, "reflecting @", paddle * 180 / Math.PI, "exiting @", ballAngle * 180 / Math.PI);
+            setBall();
+            if (balldX > 0) {
+              balldX = -balldX;
+              balldY = -balldY;
+              ballAngle += Math.PI;
+            }
+          }
+          else {
+            ++AIScore;
+            AIY = 0.5;
+            playerY = 0.5;
+            ballX = 0.5;
+            ballY = 1/3;
+            ballAngle = Math.atan(1);
+            setBall();
+            console.log("AI score: ", AIScore);
+          }
+        }
+        context.fillStyle = "#000000";
+        context.fillRect(0, 0, width, height);
+        context.fillStyle = "#FFFFFF";
+        context.fillRect(0, (AIY - paddleSize / 2) * height, paddleWidth, paddleSize * height);
+        context.fillRect(width * 1 - paddleWidth, (playerY - paddleSize / 2) * height, paddleWidth, paddleSize * height);
+        context.beginPath();
+        context.arc(ballX * width, ballY * height, ballRadius, 0, 2 * Math.PI);
+        context.fill();
+        context.fillText(AIScore, width / 3, height / 4);
+        context.fillText(playerScore, 2 * width / 3, height / 4);
+        context.beginPath();
+        context.moveTo(width / 2 , 0);
+        context.lineTo(width / 2, height);
+        context.stroke();
       }
-      function recursiveUpdate(timeout) {
-        update();
-        if (!paused) setTimeout(recursiveUpdate, timeout, timeout);
+      function recursiveTick() {
+        tick();
+        if (ticking && !paused) setTimeout(recursiveTick, framedelay);
       }
-      recursiveUpdate(updateInterval);
+      setTimeout(recursiveTick, 0);
     </script>
   </body>
 </html>
