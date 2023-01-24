@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Key Presses</title>
+  </head>
+  <body>
+    <pre id="output"></pre>
+    <button onclick="reset();">Reset</button>
+    <script>
+      let lines;
+      function reset() {
+        lines = new Array(35);
+        lines.fill("");
+        document.getElementById("output").innerHTML = lines.join('\n');
+      }
+      reset();
+      document.onkeydown = (e) => {
+        e = e || window.event;
+        lines.shift();
+        lines.push(`"${e.key}" (${e.keyCode})`);
+        document.getElementById("output").innerHTML = lines.join('\n');
+      };
+    </script>
+  </body>
+</html>
