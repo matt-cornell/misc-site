@@ -95,9 +95,12 @@
         ballX = x / 2;
         balldX = Math.random() - 0.5;
         balldY = -5;
+        highscore = localStorage.getItem("highscore");
+        if (highscore === null || highscore === undefined) highscore = 0;
         if (score > highscore) {
           highscore = score;
         }
+        localStorage.setItem("highscore", highscore);
         score = 0;
       }
       init();
